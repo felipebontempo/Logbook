@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, screen, shell } from "electron";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { existsSync } from "node:fs";
 import { BootstrapStore } from "./bootstrap-store";
 import { JourneyDatabase, toEntryListItem } from "./database";
 import { captureCurrentDisplayScreenshot, isFullscreenAppActive } from "./desktop";
@@ -246,13 +246,37 @@ class JourneyLogApplication {
   }
 
   private createTrayIcon() {
+    const pngPath = path.join(app.getAppPath(), "dist", "assets", "tray.png");
+
+    if (existsSync(pngPath)) {
+      const fromFile = nativeImage.createFromPath(pngPath);
+      if (!fromFile.isEmpty()) {
+        return fromFile.resize({
+          width: process.platform === "win32" ? 16 : 18,
+          height: process.platform === "win32" ? 16 : 18,
+          quality: "best"
+        });
+      }
+    }
+
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-        <rect width="64" height="64" rx="18" fill="#1d1208" />
-        <path d="M18 17h28v5H18zm0 12h28v5H18zm0 12h18v5H18z" fill="#f5f1e8" />
+        <rect x="2" y="2" width="60" height="60" rx="16" fill="#1f130c" />
+        <circle cx="32" cy="32" r="18" fill="#fff8ef" />
+        <circle cx="32" cy="32" r="2.5" fill="#2a1a10" />
+        <path d="M32 32V21" stroke="#2a1a10" stroke-width="3.5" stroke-linecap="round" />
+        <path d="M32 32L42 36" stroke="#b4512f" stroke-width="3.5" stroke-linecap="round" />
       </svg>
     `;
-    return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+
+    const base = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+    const icon = base.resize({
+      width: process.platform === "win32" ? 16 : 18,
+      height: process.platform === "win32" ? 16 : 18,
+      quality: "best"
+    });
+
+    return icon.isEmpty() ? base : icon;
   }
 
   private showMainWindow(): void {
@@ -422,4 +446,3 @@ class JourneyLogApplication {
 
 const journeyLog = new JourneyLogApplication();
 void journeyLog.start();
-
