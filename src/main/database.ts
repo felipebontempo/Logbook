@@ -44,7 +44,7 @@ export class JourneyDatabase {
     await mkdir(path.join(dataDir, ".temp"), { recursive: true });
 
     this.dataDir = dataDir;
-    this.db = new DatabaseSync(path.join(dataDir, "journeylog.db"));
+    this.db = new DatabaseSync(path.join(dataDir, "logbook.db"));
     this.db.exec(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS settings (
@@ -219,7 +219,7 @@ export class JourneyDatabase {
     const entries = this.listAnsweredEntries(request.filter);
     const timestamp = formatFileTimestamp(new Date());
     const extension = request.format === "csv" ? "csv" : "md";
-    const exportPath = path.join(this.getDataDir(), "exports", `journeylog-${timestamp}.${extension}`);
+    const exportPath = path.join(this.getDataDir(), "exports", `logbook-${timestamp}.${extension}`);
 
     if (request.format === "csv") {
       await writeFile(exportPath, entriesToCsv(entries), "utf8");
@@ -241,10 +241,10 @@ export class JourneyDatabase {
     }
 
     if (groups.size === 0) {
-      return "# JourneyLog Export\n\nNenhum registro encontrado.";
+      return "# Logbook Export\n\nNenhum registro encontrado.";
     }
 
-    const chunks = ["# JourneyLog Export", ""];
+    const chunks = ["# Logbook Export", ""];
     for (const day of [...groups.keys()].sort().reverse()) {
       chunks.push(entriesToMarkdown(day, groups.get(day) ?? [], {
         resolveScreenshotPath: (screenshotPath) => path.relative(exportDirectory, screenshotPath)
@@ -322,3 +322,4 @@ export function toEntryListItem(entry: EntryRecord) {
     localTime: formatLocalTime(entry.answeredAt ?? entry.createdAt)
   };
 }
+

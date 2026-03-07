@@ -11,7 +11,7 @@ interface ActiveCheckinInternal extends PendingCheckinState {
   timeout: ReturnType<typeof setTimeout>;
 }
 
-class JourneyLogApplication {
+class LogbookApplication {
   private readonly bootstrapStore = new BootstrapStore(path.join(app.getPath("userData"), "bootstrap.json"));
   private readonly database = new JourneyDatabase();
   private readonly scheduler = new ReminderScheduler(async (scheduledAt) => this.handleReminderDue(scheduledAt));
@@ -22,8 +22,8 @@ class JourneyLogApplication {
   private isQuitting = false;
 
   async start(): Promise<void> {
-    app.setAppUserModelId("com.felipe.journeylog");
-    app.setName("JourneyLog");
+    app.setAppUserModelId("com.felipe.logbook");
+    app.setName("Logbook");
 
     await app.whenReady();
     await this.initializeStorage();
@@ -153,7 +153,7 @@ class JourneyLogApplication {
       minWidth: isWindows ? 1400 : 980,
       minHeight: isWindows ? 900 : 720,
       show: false,
-      title: "JourneyLog",
+      title: "Logbook",
       autoHideMenuBar: true,
       backgroundColor: "#f5f1e8",
       webPreferences: {
@@ -187,7 +187,7 @@ class JourneyLogApplication {
       show: false,
       skipTaskbar: true,
       alwaysOnTop: true,
-      title: "JourneyLog Check-in",
+      title: "Logbook Check-in",
       backgroundColor: "#1d1208",
       webPreferences: {
         preload: path.join(app.getAppPath(), "dist", "preload", "index.js"),
@@ -209,7 +209,7 @@ class JourneyLogApplication {
   private createTray(): void {
     const icon = this.createTrayIcon();
     this.tray = new Tray(icon);
-    this.tray.setToolTip("JourneyLog");
+    this.tray.setToolTip("Logbook");
     this.tray.addListener("click", () => {
       this.showMainWindow();
     });
@@ -308,7 +308,7 @@ class JourneyLogApplication {
         ...DEFAULT_SETTINGS,
         needsSetup: true,
         screenRecordingHint: process.platform === "darwin"
-          ? "On macOS, grant Screen Recording permission so JourneyLog can capture screenshots."
+          ? "On macOS, grant Screen Recording permission so Logbook can capture screenshots."
           : null
       };
     }
@@ -434,7 +434,7 @@ class JourneyLogApplication {
 
   private assertReady(): void {
     if (!this.database.isReady()) {
-      throw new Error("JourneyLog is not configured yet.");
+      throw new Error("Logbook is not configured yet.");
     }
   }
 
@@ -444,5 +444,6 @@ class JourneyLogApplication {
   }
 }
 
-const journeyLog = new JourneyLogApplication();
+const journeyLog = new LogbookApplication();
 void journeyLog.start();
+

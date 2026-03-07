@@ -2,7 +2,7 @@ import type { EntryListFilter, EntryListResponse, ExportRequest, PendingCheckinS
 
 declare global {
   interface Window {
-    journeylog: {
+    logbook: {
       settings: {
         get(): Promise<SettingsPayload>;
         save(payload: SaveSettingsRequest): Promise<SettingsPayload>;

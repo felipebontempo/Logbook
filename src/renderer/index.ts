@@ -36,7 +36,7 @@ function fileUrl(targetPath: string): string {
 }
 
 async function loadSettings(): Promise<void> {
-  state.settings = await window.journeylog.settings.get();
+  state.settings = await window.logbook.settings.get();
   renderSettings();
 }
 
@@ -48,7 +48,7 @@ async function loadEntries(): Promise<void> {
     return;
   }
 
-  const response = await window.journeylog.entries.list(state.filter);
+  const response = await window.logbook.entries.list(state.filter);
   state.items = response.items;
   if (!state.items.find((entry) => entry.id === state.selectedId)) {
     state.selectedId = state.items[0]?.id ?? null;
@@ -164,7 +164,7 @@ function renderDetail(): void {
     button.className = "secondary link-button";
     button.textContent = "Show screenshot in folder";
     button.addEventListener("click", () => {
-      void window.journeylog.app.showInFolder(selected.screenshotPath!);
+      void window.logbook.app.showInFolder(selected.screenshotPath!);
     });
     entryDetail.appendChild(button);
   }
@@ -205,23 +205,23 @@ async function saveSettings(prefix: "setup" | "settings"): Promise<void> {
   }
 
   setHint(hint, "Saving...");
-  await window.journeylog.settings.save(payload);
+  await window.logbook.settings.save(payload);
   await loadSettings();
   await loadEntries();
   setHint(hint, "Saved.");
 }
 
 async function chooseDirectory(targetInputId: string): Promise<void> {
-  const selected = await window.journeylog.app.selectDataDirectory();
+  const selected = await window.logbook.app.selectDataDirectory();
   if (selected) {
     input(targetInputId).value = selected;
   }
 }
 
 async function exportEntries(format: "csv" | "markdown"): Promise<void> {
-  const result = await window.journeylog.entries.export({ format, filter: state.filter });
+  const result = await window.logbook.entries.export({ format, filter: state.filter });
   setHint(settingsHint, `Exported to ${result.path}`);
-  await window.journeylog.app.showInFolder(result.path);
+  await window.logbook.app.showInFolder(result.path);
 }
 
 function attachEvents(): void {
@@ -229,7 +229,7 @@ function attachEvents(): void {
   document.querySelector("#change-data-dir")?.addEventListener("click", () => void chooseDirectory("#settings-data-dir"));
   document.querySelector("#save-setup")?.addEventListener("click", () => void saveSettings("setup"));
   document.querySelector("#save-settings")?.addEventListener("click", () => void saveSettings("settings"));
-  document.querySelector("#trigger-now")?.addEventListener("click", () => void window.journeylog.checkin.triggerNow());
+  document.querySelector("#trigger-now")?.addEventListener("click", () => void window.logbook.checkin.triggerNow());
   document.querySelector("#export-csv")?.addEventListener("click", () => void exportEntries("csv"));
   document.querySelector("#export-md")?.addEventListener("click", () => void exportEntries("markdown"));
 
@@ -248,11 +248,11 @@ function attachEvents(): void {
     });
   }
 
-  window.journeylog.events.onEntriesUpdated(() => {
+  window.logbook.events.onEntriesUpdated(() => {
     void loadEntries();
   });
 
-  window.journeylog.events.onSettingsUpdated(() => {
+  window.logbook.events.onSettingsUpdated(() => {
     void loadSettings();
   });
 }

@@ -1,6 +1,6 @@
-# JourneyLog Desktop
+# Logbook Desktop
 
-JourneyLog is a private desktop tracker for Windows and macOS. It runs in the tray/menu bar, opens a lightweight check-in popup on a configurable interval, captures a screenshot at popup open, stores answered entries in SQLite, and mirrors each day into a folder with `entries.md` plus screenshots.
+Logbook is a private desktop tracker for Windows and macOS. It runs in the tray/menu bar, opens a lightweight check-in popup on a configurable interval, captures a screenshot at popup open, stores answered entries in SQLite, and mirrors each day into a folder with `entries.md` plus screenshots.
 
 ## Stack
 
@@ -32,10 +32,10 @@ npm test
 
 ## Data layout
 
-After setup, JourneyLog writes into your chosen base directory using this structure:
+After setup, Logbook writes into your chosen base directory using this structure:
 
 ```text
-journeylog.db
+logbook.db
 days/
   YYYY-MM-DD/
     entries.md

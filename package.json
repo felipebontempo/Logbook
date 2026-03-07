@@ -1,5 +1,5 @@
 {
-  "name": "journeylog-desktop",
+  "name": "logbook-desktop",
   "version": "0.1.0",
   "description": "Personal desktop journey logger for Windows and macOS.",
   "main": "dist/main/main.js",
@@ -17,8 +17,8 @@
     "package:dir": "npm run build && electron-builder --dir"
   },
   "build": {
-    "appId": "com.felipe.journeylog",
-    "productName": "JourneyLog",
+    "appId": "com.felipe.logbook",
+    "productName": "Logbook",
     "files": [
       "dist/**/*",
       "package.json"
@@ -50,3 +50,5 @@
     "typescript": "^5.8.2"
   }
 }
+
+

@@ -11,7 +11,7 @@ const sample: EntryRecord = {
   text: "Writing implementation notes",
   tag: null,
   status: "answered",
-  screenshotPath: "C:/JourneyLog/days/2026-03-07/screenshots/2026-03-07_09-00-00.png",
+  screenshotPath: "C:/Logbook/days/2026-03-07/screenshots/2026-03-07_09-00-00.png",
   createdAt: "2026-03-07T12:02:00.000Z",
   updatedAt: "2026-03-07T12:02:00.000Z"
 };
@@ -34,3 +34,4 @@ test("date format helpers return local friendly shapes", () => {
   assert.equal(formatLocalDay(date), "2026-03-07");
   assert.equal(formatLocalTime(date), "09:45");
 });
+

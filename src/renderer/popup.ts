@@ -27,7 +27,7 @@ function renderState(state: PendingCheckinState | null): void {
 }
 
 async function loadState(): Promise<void> {
-  const state = await window.journeylog.checkin.getState();
+  const state = await window.logbook.checkin.getState();
   renderState(state);
   window.setTimeout(() => input.focus(), 20);
 }
@@ -41,14 +41,14 @@ async function save(): Promise<void> {
 
   setBusy(true);
   status.textContent = "Saving...";
-  await window.journeylog.entries.create({ text });
+  await window.logbook.entries.create({ text });
   status.textContent = "Saved.";
 }
 
 async function snooze(): Promise<void> {
   setBusy(true);
   status.textContent = "Snoozing...";
-  await window.journeylog.checkin.snooze();
+  await window.logbook.checkin.snooze();
   status.textContent = "Snoozed.";
 }
 
@@ -79,7 +79,7 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-window.journeylog.events.onPopupUpdated(() => {
+window.logbook.events.onPopupUpdated(() => {
   void loadState();
 });
 

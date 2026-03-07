@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { EntryListFilter, ExportRequest, SaveEntryRequest, SaveSettingsRequest } from "../main/types";
 
-contextBridge.exposeInMainWorld("journeylog", {
+contextBridge.exposeInMainWorld("logbook", {
   settings: {
     get: () => ipcRenderer.invoke("settings:get"),
     save: (payload: SaveSettingsRequest) => ipcRenderer.invoke("settings:save", payload)
