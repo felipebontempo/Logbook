@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JourneyLog Check-in</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <p class="eyebrow">JourneyLog check-in</p>
+      <h1>What are you doing right now?</h1>
+      <p id="popup-meta" class="meta">Preparing reminder...</p>
+      <textarea id="popup-input" rows="3" placeholder="Describe the task, context, or focus of this moment."></textarea>
+      <div class="popup-actions">
+        <button id="popup-snooze" class="secondary">Snooze 5 min</button>
+        <button id="popup-save">Save</button>
+      </div>
+      <p class="hint">Enter saves. Esc snoozes. Timeout auto-snoozes.</p>
+      <p id="popup-status" class="status"></p>
+    </main>
+
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

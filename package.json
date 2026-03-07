@@ -1,0 +1,52 @@
+{
+  "name": "journeylog-desktop",
+  "version": "0.1.0",
+  "description": "Personal desktop journey logger for Windows and macOS.",
+  "main": "dist/main/main.js",
+  "author": "Codex",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run clean && npm run build:main && npm run build:renderer && npm run copy:static",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json",
+    "copy:static": "node scripts/copy-static.mjs",
+    "clean": "node scripts/clean.mjs",
+    "start": "npm run build && electron .",
+    "test": "npm run build:main && node --test dist/test/**/*.test.js",
+    "package": "npm run build && electron-builder",
+    "package:dir": "npm run build && electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.felipe.journeylog",
+    "productName": "JourneyLog",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    }
+  },
+  "dependencies": {
+    "active-win": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.2"
+  }
+}

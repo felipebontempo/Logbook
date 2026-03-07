@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JourneyLog</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Desktop Journal</p>
+          <h1>JourneyLog</h1>
+          <p class="lede">Check-ins recorrentes, screenshots e análise diária em um app local.</p>
+        </div>
+        <div class="status-card">
+          <h2>Status</h2>
+          <p id="status-text">Carregando...</p>
+          <button id="trigger-now" class="secondary">Trigger check-in now</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section id="setup-view" class="panel hidden">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">First Run</p>
+              <h2>Configure your private timeline</h2>
+            </div>
+          </div>
+
+          <div class="setup-grid">
+            <label>
+              Base data directory
+              <div class="path-picker">
+                <input id="setup-data-dir" type="text" readonly />
+                <button id="pick-data-dir" class="secondary">Choose folder</button>
+              </div>
+            </label>
+            <label>
+              Check-in interval (minutes)
+              <input id="setup-interval" type="number" min="5" step="5" />
+            </label>
+            <label>
+              Snooze (minutes)
+              <input id="setup-snooze" type="number" min="1" step="1" />
+            </label>
+            <label>
+              Popup timeout (seconds)
+              <input id="setup-timeout" type="number" min="15" step="15" />
+            </label>
+            <label class="toggle-row">
+              <input id="setup-launch" type="checkbox" />
+              Launch at login
+            </label>
+          </div>
+
+          <div id="setup-hint" class="hint"></div>
+          <button id="save-setup">Save and start tracking</button>
+        </section>
+
+        <section id="dashboard-view" class="hidden">
+          <section class="panel settings-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Configuration</p>
+                <h2>Capture rhythm</h2>
+              </div>
+              <button id="save-settings">Save settings</button>
+            </div>
+
+            <div class="settings-grid">
+              <label>
+                Data directory
+                <div class="path-picker">
+                  <input id="settings-data-dir" type="text" readonly />
+                  <button id="change-data-dir" class="secondary">Change folder</button>
+                </div>
+              </label>
+              <label>
+                Interval (minutes)
+                <input id="settings-interval" type="number" min="5" step="5" />
+              </label>
+              <label>
+                Snooze (minutes)
+                <input id="settings-snooze" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Timeout (seconds)
+                <input id="settings-timeout" type="number" min="15" step="15" />
+              </label>
+              <label class="toggle-row">
+                <input id="settings-launch" type="checkbox" />
+                Launch at login
+              </label>
+            </div>
+            <div id="settings-hint" class="hint"></div>
+          </section>
+
+          <section class="panel analysis-panel">
+            <div class="panel-head analysis-head">
+              <div>
+                <p class="eyebrow">Analysis</p>
+                <h2>Daily trail</h2>
+              </div>
+              <div class="actions-row">
+                <button id="export-csv" class="secondary">Export CSV</button>
+                <button id="export-md" class="secondary">Export Markdown</button>
+              </div>
+            </div>
+
+            <div class="toolbar">
+              <div class="segmented">
+                <button data-period="today" class="period active">Hoje</button>
+                <button data-period="week" class="period">Esta semana</button>
+                <button data-period="all" class="period">Tudo</button>
+              </div>
+              <input id="search-input" type="search" placeholder="Buscar por palavra" />
+            </div>
+
+            <div class="analysis-grid">
+              <div id="entries-list" class="entries-list"></div>
+              <div id="entry-detail" class="entry-detail empty-state">
+                Selecione um registro para ver o detalhe.
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

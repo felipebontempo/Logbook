@@ -1,0 +1,422 @@
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, screen, shell } from "electron";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { BootstrapStore } from "./bootstrap-store";
+import { JourneyDatabase, toEntryListItem } from "./database";
+import { captureCurrentDisplayScreenshot, isFullscreenAppActive } from "./desktop";
+import { ReminderScheduler } from "./scheduler";
+import { DEFAULT_SETTINGS, type AppSettings, type EntryListFilter, type PendingCheckinState, type SaveEntryRequest, type SaveSettingsRequest, type SettingsPayload, type ExportRequest } from "./types";
+
+interface ActiveCheckinInternal extends PendingCheckinState {
+  timeout: ReturnType<typeof setTimeout>;
+}
+
+class JourneyLogApplication {
+  private readonly bootstrapStore = new BootstrapStore(path.join(app.getPath("userData"), "bootstrap.json"));
+  private readonly database = new JourneyDatabase();
+  private readonly scheduler = new ReminderScheduler(async (scheduledAt) => this.handleReminderDue(scheduledAt));
+  private mainWindow: BrowserWindow | null = null;
+  private popupWindow: BrowserWindow | null = null;
+  private tray: Tray | null = null;
+  private activeCheckin: ActiveCheckinInternal | null = null;
+  private isQuitting = false;
+
+  async start(): Promise<void> {
+    app.setAppUserModelId("com.felipe.journeylog");
+    app.setName("JourneyLog");
+
+    await app.whenReady();
+    await this.initializeStorage();
+    this.registerIpc();
+    this.createMainWindow();
+    this.createTray();
+    this.applyLaunchSettings();
+
+    if (this.database.isReady()) {
+      this.scheduler.start(this.database.getSettings());
+      this.mainWindow?.hide();
+    } else {
+      this.showMainWindow();
+    }
+
+    app.on("activate", () => {
+      this.showMainWindow();
+    });
+
+    app.on("before-quit", () => {
+      this.isQuitting = true;
+      this.scheduler.stop();
+      this.clearActiveCheckinTimer();
+    });
+
+    app.on("window-all-closed", () => {
+      // Keep the resident app alive in tray/menu bar mode.
+    });
+  }
+
+  private async initializeStorage(): Promise<void> {
+    const bootstrap = await this.bootstrapStore.load();
+    if (bootstrap.dataDir) {
+      await this.database.initialize(bootstrap.dataDir);
+    }
+  }
+
+  private registerIpc(): void {
+    ipcMain.handle("settings:get", async (): Promise<SettingsPayload> => this.getSettingsPayload());
+
+    ipcMain.handle("app:selectDataDirectory", async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ["openDirectory", "createDirectory"]
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      return result.filePaths[0];
+    });
+
+    ipcMain.handle("settings:save", async (_event, payload: SaveSettingsRequest): Promise<SettingsPayload> => {
+      await this.persistSettings(payload);
+      return this.getSettingsPayload();
+    });
+
+    ipcMain.handle("entries:list", async (_event, filter: EntryListFilter) => {
+      this.assertReady();
+      return {
+        items: this.database.listAnsweredEntries(filter).map(toEntryListItem)
+      };
+    });
+
+    ipcMain.handle("entries:create", async (_event, payload: SaveEntryRequest) => {
+      this.assertReady();
+      if (!this.activeCheckin) {
+        throw new Error("No active check-in to save.");
+      }
+
+      if (!payload.text.trim()) {
+        throw new Error("Text is required.");
+      }
+
+      const checkin = this.activeCheckin;
+      this.clearActiveCheckinTimer();
+      const entry = await this.database.finalizeAnsweredEntry({
+        scheduledAt: checkin.scheduledAt,
+        capturedAt: checkin.capturedAt,
+        tempScreenshotPath: checkin.screenshotTempPath,
+        text: payload.text
+      });
+
+      this.activeCheckin = null;
+      this.popupWindow?.hide();
+      this.broadcast("entries:updated");
+      return toEntryListItem(entry);
+    });
+
+    ipcMain.handle("checkin:snooze", async () => {
+      await this.snoozeActiveCheckin();
+      return { ok: true };
+    });
+
+    ipcMain.handle("popup:getState", async () => {
+      return this.activeCheckin ? this.toPendingState(this.activeCheckin) : null;
+    });
+
+    ipcMain.handle("entries:export", async (_event, request: ExportRequest) => {
+      this.assertReady();
+      const exported = await this.database.exportEntries(request);
+      this.broadcast("entries:updated");
+      return exported;
+    });
+
+    ipcMain.handle("app:showInFolder", async (_event, targetPath: string) => {
+      shell.showItemInFolder(targetPath);
+      return { ok: true };
+    });
+
+    ipcMain.handle("checkin:triggerNow", async () => {
+      this.scheduler.triggerNow();
+      return { ok: true };
+    });
+  }
+
+  private createMainWindow(): void {
+    if (this.mainWindow) {
+      return;
+    }
+
+    this.mainWindow = new BrowserWindow({
+      width: 1180,
+      height: 860,
+      minWidth: 980,
+      minHeight: 720,
+      show: false,
+      title: "JourneyLog",
+      autoHideMenuBar: true,
+      backgroundColor: "#f5f1e8",
+      webPreferences: {
+        preload: path.join(app.getAppPath(), "dist", "preload", "index.js"),
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    });
+
+    this.mainWindow.on("close", (event) => {
+      if (!this.isQuitting) {
+        event.preventDefault();
+        this.mainWindow?.hide();
+      }
+    });
+
+    void this.mainWindow.loadFile(path.join(app.getAppPath(), "dist", "renderer", "index.html"));
+  }
+
+  private createPopupWindow(): void {
+    if (this.popupWindow) {
+      return;
+    }
+
+    this.popupWindow = new BrowserWindow({
+      width: 380,
+      height: 240,
+      frame: false,
+      resizable: false,
+      fullscreenable: false,
+      show: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      title: "JourneyLog Check-in",
+      backgroundColor: "#1d1208",
+      webPreferences: {
+        preload: path.join(app.getAppPath(), "dist", "preload", "index.js"),
+        contextIsolation: true,
+        nodeIntegration: false
+      }
+    });
+
+    this.popupWindow.on("close", (event) => {
+      if (!this.isQuitting && this.activeCheckin) {
+        event.preventDefault();
+        void this.snoozeActiveCheckin();
+      }
+    });
+
+    void this.popupWindow.loadFile(path.join(app.getAppPath(), "dist", "renderer", "popup.html"));
+  }
+
+  private createTray(): void {
+    const icon = this.createTrayIcon();
+    this.tray = new Tray(icon);
+    this.tray.setToolTip("JourneyLog");
+    this.tray.addListener("click", () => {
+      this.showMainWindow();
+    });
+    this.refreshTrayMenu();
+  }
+
+  private refreshTrayMenu(): void {
+    if (!this.tray) {
+      return;
+    }
+
+    const menu = Menu.buildFromTemplate([
+      {
+        label: "Open Dashboard",
+        click: () => this.showMainWindow()
+      },
+      {
+        label: "Trigger Check-in Now",
+        click: () => this.scheduler.triggerNow()
+      },
+      {
+        type: "separator"
+      },
+      {
+        label: "Quit",
+        click: () => {
+          this.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    this.tray.setContextMenu(menu);
+  }
+
+  private createTrayIcon() {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+        <rect width="64" height="64" rx="18" fill="#1d1208" />
+        <path d="M18 17h28v5H18zm0 12h28v5H18zm0 12h18v5H18z" fill="#f5f1e8" />
+      </svg>
+    `;
+    return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  }
+
+  private showMainWindow(): void {
+    this.createMainWindow();
+    this.mainWindow?.show();
+    this.mainWindow?.focus();
+  }
+
+  private async persistSettings(payload: SaveSettingsRequest): Promise<void> {
+    await this.database.initialize(payload.dataDir);
+    this.database.saveSettings(payload);
+    await this.bootstrapStore.save({ dataDir: payload.dataDir });
+    this.applyLaunchSettings();
+    this.scheduler.updateSettings(this.database.getSettings());
+    if (!this.database.isReady()) {
+      this.scheduler.start(this.database.getSettings());
+    }
+    if (!this.mainWindow) {
+      this.createMainWindow();
+    }
+    this.broadcast("settings:updated");
+    this.refreshTrayMenu();
+  }
+
+  private getSettingsPayload(): SettingsPayload {
+    if (!this.database.isReady()) {
+      return {
+        dataDir: "",
+        ...DEFAULT_SETTINGS,
+        needsSetup: true,
+        screenRecordingHint: process.platform === "darwin"
+          ? "On macOS, grant Screen Recording permission so JourneyLog can capture screenshots."
+          : null
+      };
+    }
+
+    return {
+      ...this.database.getSettings(),
+      needsSetup: false,
+      screenRecordingHint: process.platform === "darwin"
+        ? "If screenshots are blank, grant Screen Recording permission in System Settings."
+        : null
+    };
+  }
+
+  private applyLaunchSettings(): void {
+    if (!this.database.isReady()) {
+      return;
+    }
+
+    const settings = this.database.getSettings();
+    app.setLoginItemSettings({
+      openAtLogin: settings.launchAtLogin,
+      openAsHidden: true
+    });
+  }
+
+  private async handleReminderDue(scheduledAt: string): Promise<void> {
+    if (!this.database.isReady() || this.activeCheckin) {
+      return;
+    }
+
+    const settings = this.database.getSettings();
+    if (await isFullscreenAppActive()) {
+      await this.database.recordStatusEvent({
+        scheduledAt,
+        capturedAt: null,
+        status: "skipped_fullscreen",
+        tempScreenshotPath: null
+      });
+      this.scheduler.scheduleExtra(10);
+      return;
+    }
+
+    let capturedAt: string | null = null;
+    let tempScreenshotPath: string | null = null;
+
+    try {
+      const screenshot = await captureCurrentDisplayScreenshot();
+      if (screenshot) {
+        capturedAt = new Date().toISOString();
+        tempScreenshotPath = await this.database.savePendingScreenshot(screenshot, capturedAt);
+      }
+    } catch {
+      capturedAt = null;
+      tempScreenshotPath = null;
+    }
+
+    this.createPopupWindow();
+    const timeout = setTimeout(() => {
+      void this.snoozeActiveCheckin();
+    }, settings.popupTimeoutSeconds * 1000);
+
+    this.activeCheckin = {
+      scheduledAt,
+      capturedAt,
+      screenshotTempPath: tempScreenshotPath,
+      autoCloseAt: new Date(Date.now() + settings.popupTimeoutSeconds * 1000).toISOString(),
+      timeout
+    };
+
+    this.positionPopupWindow();
+    this.popupWindow?.show();
+    this.popupWindow?.focus();
+    this.popupWindow?.webContents.send("popup:updated");
+  }
+
+  private positionPopupWindow(): void {
+    if (!this.popupWindow) {
+      return;
+    }
+
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    const bounds = this.popupWindow.getBounds();
+    const x = Math.round(display.workArea.x + display.workArea.width - bounds.width - 24);
+    const y = Math.round(display.workArea.y + display.workArea.height - bounds.height - 24);
+    this.popupWindow.setPosition(x, y);
+  }
+
+  private async snoozeActiveCheckin(): Promise<void> {
+    if (!this.activeCheckin || !this.database.isReady()) {
+      this.popupWindow?.hide();
+      return;
+    }
+
+    const checkin = this.activeCheckin;
+    this.clearActiveCheckinTimer();
+    await this.database.recordStatusEvent({
+      scheduledAt: checkin.scheduledAt,
+      capturedAt: checkin.capturedAt,
+      status: "snoozed",
+      tempScreenshotPath: checkin.screenshotTempPath
+    });
+
+    this.activeCheckin = null;
+    this.popupWindow?.hide();
+    this.scheduler.scheduleExtra(this.database.getSettings().snoozeMinutes);
+    this.broadcast("entries:updated");
+  }
+
+  private clearActiveCheckinTimer(): void {
+    if (this.activeCheckin) {
+      clearTimeout(this.activeCheckin.timeout);
+    }
+  }
+
+  private toPendingState(checkin: ActiveCheckinInternal): PendingCheckinState {
+    return {
+      scheduledAt: checkin.scheduledAt,
+      capturedAt: checkin.capturedAt,
+      screenshotTempPath: checkin.screenshotTempPath,
+      autoCloseAt: checkin.autoCloseAt
+    };
+  }
+
+  private assertReady(): void {
+    if (!this.database.isReady()) {
+      throw new Error("JourneyLog is not configured yet.");
+    }
+  }
+
+  private broadcast(channel: "entries:updated" | "settings:updated"): void {
+    this.mainWindow?.webContents.send(channel);
+    this.popupWindow?.webContents.send(channel);
+  }
+}
+
+const journeyLog = new JourneyLogApplication();
+void journeyLog.start();
