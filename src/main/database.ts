@@ -224,14 +224,14 @@ export class JourneyDatabase {
     if (request.format === "csv") {
       await writeFile(exportPath, entriesToCsv(entries), "utf8");
     } else {
-      const markdown = this.entriesToMarkdownDocument(entries);
+      const markdown = this.entriesToMarkdownDocument(entries, path.dirname(exportPath));
       await writeFile(exportPath, markdown, "utf8");
     }
 
     return { path: exportPath };
   }
 
-  private entriesToMarkdownDocument(entries: EntryRecord[]): string {
+  private entriesToMarkdownDocument(entries: EntryRecord[], exportDirectory: string): string {
     const groups = new Map<string, EntryRecord[]>();
     for (const entry of entries) {
       const day = formatLocalDay(entry.answeredAt ?? entry.createdAt);
@@ -246,7 +246,9 @@ export class JourneyDatabase {
 
     const chunks = ["# JourneyLog Export", ""];
     for (const day of [...groups.keys()].sort().reverse()) {
-      chunks.push(entriesToMarkdown(day, groups.get(day) ?? []));
+      chunks.push(entriesToMarkdown(day, groups.get(day) ?? [], {
+        resolveScreenshotPath: (screenshotPath) => path.relative(exportDirectory, screenshotPath)
+      }));
       chunks.push("");
     }
 

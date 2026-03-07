@@ -1,7 +1,15 @@
 import type { EntryRecord } from "./types";
 
+interface MarkdownOptions {
+  resolveScreenshotPath?: (inputPath: string) => string;
+}
+
 function pad(value: number): string {
   return value.toString().padStart(2, "0");
+}
+
+function toMarkdownPath(inputPath: string): string {
+  return inputPath.replaceAll("\\", "/").replaceAll(" ", "%20");
 }
 
 export function formatLocalDay(input: Date | string): string {
@@ -35,7 +43,7 @@ function escapeCsv(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-export function entriesToMarkdown(day: string, entries: EntryRecord[]): string {
+export function entriesToMarkdown(day: string, entries: EntryRecord[], options: MarkdownOptions = {}): string {
   const lines = [`# ${day}`, ""];
 
   if (entries.length === 0) {
@@ -46,8 +54,12 @@ export function entriesToMarkdown(day: string, entries: EntryRecord[]): string {
   for (const entry of entries) {
     const label = formatLocalTime(entry.answeredAt ?? entry.createdAt);
     lines.push(`- ${label} - ${entry.text ?? ""}`);
+
     if (entry.screenshotPath) {
-      lines.push(`  Screenshot: ${entry.screenshotPath}`);
+      const resolved = options.resolveScreenshotPath
+        ? options.resolveScreenshotPath(entry.screenshotPath)
+        : entry.screenshotPath;
+      lines.push(`  ![Screenshot ${label}](${toMarkdownPath(resolved)})`);
     }
   }
 

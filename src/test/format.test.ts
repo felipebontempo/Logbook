@@ -20,7 +20,7 @@ test("entriesToMarkdown renders a readable daily digest", () => {
   const markdown = entriesToMarkdown("2026-03-07", [sample]);
   assert.match(markdown, /# 2026-03-07/);
   assert.match(markdown, /Writing implementation notes/);
-  assert.match(markdown, /Screenshot:/);
+  assert.match(markdown, /!\[Screenshot/);
 });
 
 test("entriesToCsv escapes fields and includes headers", () => {
