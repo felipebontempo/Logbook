@@ -145,11 +145,13 @@ class JourneyLogApplication {
       return;
     }
 
+    const isWindows = process.platform === "win32";
+
     this.mainWindow = new BrowserWindow({
-      width: 1180,
-      height: 860,
-      minWidth: 980,
-      minHeight: 720,
+      width: isWindows ? 1799 : 1180,
+      height: isWindows ? 1250 : 860,
+      minWidth: isWindows ? 1400 : 980,
+      minHeight: isWindows ? 900 : 720,
       show: false,
       title: "JourneyLog",
       autoHideMenuBar: true,
