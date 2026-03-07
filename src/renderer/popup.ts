@@ -22,6 +22,7 @@ function renderState(state: PendingCheckinState | null): void {
   const scheduled = new Date(state.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const timeout = new Date(state.autoCloseAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   meta.textContent = `Scheduled for ${scheduled}. Auto-snooze at ${timeout}.`;
+  input.value = "";
   status.textContent = state.capturedAt ? "Screenshot captured for this reminder." : "Reminder opened without screenshot.";
   setBusy(false);
 }
