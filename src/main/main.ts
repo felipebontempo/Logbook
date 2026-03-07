@@ -178,7 +178,7 @@ class JourneyLogApplication {
 
     this.popupWindow = new BrowserWindow({
       width: 380,
-      height: 240,
+      height: 300,
       frame: false,
       resizable: false,
       fullscreenable: false,
