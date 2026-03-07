@@ -180,7 +180,7 @@ class JourneyLogApplication {
 
     this.popupWindow = new BrowserWindow({
       width: 380,
-      height: 300,
+      height: 340,
       frame: false,
       resizable: false,
       fullscreenable: false,
@@ -422,3 +422,4 @@ class JourneyLogApplication {
 
 const journeyLog = new JourneyLogApplication();
 void journeyLog.start();
+
