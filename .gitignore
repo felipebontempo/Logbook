@@ -3,3 +3,8 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+.idea/workspace.xml
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/Logbook.iml
