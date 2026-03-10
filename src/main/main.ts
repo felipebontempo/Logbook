@@ -1,9 +1,9 @@
-import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, screen, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } from "electron";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { BootstrapStore } from "./bootstrap-store";
 import { JourneyDatabase, toEntryListItem } from "./database";
-import { captureCurrentDisplayScreenshot, isFullscreenAppActive } from "./desktop";
+import { captureCurrentDisplayScreenshot, getTargetDisplay, isFullscreenAppActive } from "./desktop";
 import { ReminderScheduler } from "./scheduler";
 import { DEFAULT_SETTINGS, type AppSettings, type EntryListFilter, type PendingCheckinState, type SaveEntryRequest, type SaveSettingsRequest, type SettingsPayload, type ExportRequest } from "./types";
 
@@ -378,18 +378,18 @@ class LogbookApplication {
       timeout
     };
 
-    this.positionPopupWindow();
+    await this.positionPopupWindow();
     this.popupWindow?.show();
     this.popupWindow?.focus();
     this.popupWindow?.webContents.send("popup:updated");
   }
 
-  private positionPopupWindow(): void {
+  private async positionPopupWindow(): Promise<void> {
     if (!this.popupWindow) {
       return;
     }
 
-    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    const display = await getTargetDisplay();
     const bounds = this.popupWindow.getBounds();
     const x = Math.round(display.workArea.x + display.workArea.width - bounds.width - 24);
     const y = Math.round(display.workArea.y + display.workArea.height - bounds.height - 24);
@@ -446,4 +446,3 @@ class LogbookApplication {
 
 const journeyLog = new LogbookApplication();
 void journeyLog.start();
-
