@@ -4,17 +4,18 @@ import { existsSync } from "node:fs";
 import { BootstrapStore } from "./bootstrap-store";
 import { JourneyDatabase, toEntryListItem } from "./database";
 import { captureCurrentDisplayScreenshot, getTargetDisplay, isFullscreenAppActive } from "./desktop";
-import { ReminderScheduler } from "./scheduler";
+import { ReminderScheduler, type ReminderDueReason } from "./scheduler";
 import { DEFAULT_SETTINGS, type AppSettings, type EntryListFilter, type PendingCheckinState, type SaveEntryRequest, type SaveSettingsRequest, type SettingsPayload, type ExportRequest } from "./types";
 
 interface ActiveCheckinInternal extends PendingCheckinState {
+  reason: ReminderDueReason;
   timeout: ReturnType<typeof setTimeout>;
 }
 
 class LogbookApplication {
   private readonly bootstrapStore = new BootstrapStore(path.join(app.getPath("userData"), "bootstrap.json"));
   private readonly database = new JourneyDatabase();
-  private readonly scheduler = new ReminderScheduler(async (scheduledAt) => this.handleReminderDue(scheduledAt));
+  private readonly scheduler = new ReminderScheduler(async (scheduledAt, reason) => this.handleReminderDue(scheduledAt, reason));
   private mainWindow: BrowserWindow | null = null;
   private popupWindow: BrowserWindow | null = null;
   private tray: Tray | null = null;
@@ -106,6 +107,10 @@ class LogbookApplication {
         tempScreenshotPath: checkin.screenshotTempPath,
         text: payload.text
       });
+
+      if (checkin.reason === "manual") {
+        this.scheduler.resetRegularFromNow();
+      }
 
       this.activeCheckin = null;
       this.popupWindow?.hide();
@@ -334,7 +339,7 @@ class LogbookApplication {
     });
   }
 
-  private async handleReminderDue(scheduledAt: string): Promise<void> {
+  private async handleReminderDue(scheduledAt: string, reason: ReminderDueReason): Promise<void> {
     if (!this.database.isReady() || this.activeCheckin) {
       return;
     }
@@ -375,6 +380,7 @@ class LogbookApplication {
       capturedAt,
       screenshotTempPath: tempScreenshotPath,
       autoCloseAt: new Date(Date.now() + settings.popupTimeoutSeconds * 1000).toISOString(),
+      reason,
       timeout
     };
 
